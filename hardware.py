@@ -28,15 +28,39 @@ SWITCH_DEVICES = {
 }
 
 # ----------------------------------------------------------------------
+# SENSORS
+# ----------------------------------------------------------------------
+FLAME_SENSOR_PIN = 23
+
+# ----------------------------------------------------------------------
 # HARDWARE SETUP
 # ----------------------------------------------------------------------
 if not SIMULATE:
-    from gpiozero import LED
+    from gpiozero import LED, DigitalInputDevice
 
     # Initialize all switches with their configured active_high state
     _switches = {key: LED(cfg["pin"], active_high=cfg.get("active_high", True)) for key, cfg in SWITCH_DEVICES.items()}
 
+    # Initialize the flame sensor
+    # Many LM393-based sensors output LOW when a flame is detected.
+    _flame_sensor = DigitalInputDevice(FLAME_SENSOR_PIN, pull_up=True)
+    _flame_alert = False
+
+    def _flame_detected_handler():
+        global _flame_alert
+        # If pull_up=True, is_active is True when the pin is pulled LOW (flame detected)
+        if _flame_sensor.is_active:
+            _flame_alert = True
+            print("\n🚨 [ALARM] Flame detected! Triggering sound system... 🚨\n")
+            _switch_set("soundsystem", True)
+
+    _flame_sensor.when_activated = _flame_detected_handler
+    _flame_sensor.when_deactivated = _flame_detected_handler
+
     def _switch_set(key, state):
+        global _flame_alert
+        if key == "soundsystem" and not state:
+            _flame_alert = False
         _switches[key].on() if state else _switches[key].off()
 
     def _switch_get(key):
@@ -45,13 +69,29 @@ if not SIMULATE:
     def _cleanup():
         for sw in _switches.values():
             sw.close()
+        _flame_sensor.close()
 
     atexit.register(_cleanup)
 
 else:
     _switch_state = {key: False for key in SWITCH_DEVICES}
+    _flame_alert = False
+    
+    # Simulate a fake background thread to occasionally "detect" a flame for testing
+    def _sim_flame():
+        global _flame_alert
+        time.sleep(20)  # Wait 20 seconds, then simulate a flame
+        _flame_alert = True
+        print("\n🚨 [SIMULATE] Flame detected! Triggering sound system... 🚨\n")
+        _switch_set("soundsystem", True)
+        
+    _sim_thread = threading.Thread(target=_sim_flame, daemon=True)
+    _sim_thread.start()
 
     def _switch_set(key, state):
+        global _flame_alert
+        if key == "soundsystem" and not state:
+            _flame_alert = False
         _switch_state[key] = state
         print(f"[SIMULATE] {SWITCH_DEVICES[key]['name']} -> {'ON' if state else 'OFF'}")
 
@@ -88,7 +128,9 @@ def _set(key, state):
 
 def get_all_states():
     """Return {device_key: bool} for every device."""
-    return {key: _get(key) for key in list_devices()}
+    states = {key: _get(key) for key in list_devices()}
+    states["flame_alert"] = _flame_alert
+    return states
 
 
 def toggle(key):

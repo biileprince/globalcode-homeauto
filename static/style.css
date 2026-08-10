@@ -201,3 +201,22 @@ input:checked + .slider::before { transform: translateX(18px); }
     box-shadow: 0 0 6px var(--green);
 }
 .dot.offline { background: var(--red); box-shadow: 0 0 6px var(--red); }
+
+/* ---- Flame Alarm ---- */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(255, 77, 94, 0.35) 0%, rgba(255, 77, 94, 0) 80%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+    z-index: 9999;
+}
+body.alarm-active::before {
+    animation: alarm-pulse 0.8s ease-in-out infinite alternate;
+}
+@keyframes alarm-pulse {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}

@@ -16,6 +16,9 @@ async function toggleDevice(deviceKey) {
         }
 
         applyState(deviceKey, data[deviceKey]);
+        if (deviceKey === 'soundsystem') {
+            refreshStatus();
+        }
     } catch (err) {
         console.error("Failed to toggle device:", err);
         setConnection(false);
@@ -39,7 +42,15 @@ async function refreshStatus() {
     try {
         const response = await fetch("/api/status");
         const data = await response.json();
+        
+        if (data.flame_alert) {
+            document.body.classList.add("alarm-active");
+        } else {
+            document.body.classList.remove("alarm-active");
+        }
+
         for (const [key, isOn] of Object.entries(data)) {
+            if (key === "flame_alert") continue;
             applyState(key, isOn);
         }
         setConnection(true);
