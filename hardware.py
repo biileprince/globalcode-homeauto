@@ -21,10 +21,10 @@ SIMULATE = False  # Set True to test on a laptop without a Pi / GPIO access
 
 # type is used by the frontend to pick icon + animation style
 SWITCH_DEVICES = {
-    "bluelight":   {"pin": 17, "name": "Room Light",   "type": "light-blue"},
-    "greenlight":  {"pin": 27, "name": "Hall Light",   "type": "light-green"},
-    "soundsystem": {"pin": 22, "name": "Sound System", "type": "sound"},
-    "fan":         {"pin": 12, "name": "Fan",          "type": "fan"},
+    "bluelight":   {"pin": 17, "name": "Room Light",   "type": "light-blue", "active_high": True},
+    "greenlight":  {"pin": 27, "name": "Hall Light",   "type": "light-green", "active_high": True},
+    "soundsystem": {"pin": 22, "name": "Sound System", "type": "sound", "active_high": True},
+    "fan":         {"pin": 12, "name": "Fan",          "type": "fan", "active_high": False},
 }
 
 # ----------------------------------------------------------------------
@@ -33,9 +33,8 @@ SWITCH_DEVICES = {
 if not SIMULATE:
     from gpiozero import LED
 
-    # If your fan is ALWAYS running, your transistor might be active-low (PNP).
-    # You can fix it by changing it to: LED(cfg["pin"], active_high=False)
-    _switches = {key: LED(cfg["pin"]) for key, cfg in SWITCH_DEVICES.items()}
+    # The fan uses active_high=False so it works with PNP/active-low transistors
+    _switches = {key: LED(cfg["pin"], active_high=cfg.get("active_high", True)) for key, cfg in SWITCH_DEVICES.items()}
 
     def _switch_set(key, state):
         _switches[key].on() if state else _switches[key].off()
