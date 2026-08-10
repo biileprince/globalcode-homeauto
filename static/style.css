@@ -72,9 +72,9 @@ body {
 }
 .bulb-base { fill: #565f7d; }
 
-.type-light-red.on .bulb-glow { fill: var(--red); filter: drop-shadow(0 0 12px var(--red)); }
-.type-light-red.on .bulb-body { fill: #ffb3ba; }
-.type-light-red.on { box-shadow: 0 0 30px -4px rgba(255,77,94,0.55); }
+.type-light-blue.on .bulb-glow { fill: var(--blue); filter: drop-shadow(0 0 12px var(--blue)); }
+.type-light-blue.on .bulb-body { fill: #b3d9ff; }
+.type-light-blue.on { box-shadow: 0 0 30px -4px rgba(77,159,255,0.55); }
 
 .type-light-green.on .bulb-glow { fill: var(--green); filter: drop-shadow(0 0 12px var(--green)); }
 .type-light-green.on .bulb-body { fill: #baffd6; }

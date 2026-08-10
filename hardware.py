@@ -5,7 +5,7 @@ All GPIO / device logic lives here. app.py never touches pins directly —
 it only calls the functions below.
 
 Devices:
-- "redlight"    -> Room Light   (LED on GPIO, red)
+- "bluelight"   -> Room Light   (LED on GPIO, blue)
 - "greenlight"  -> Hall Light   (LED on GPIO, green)
 - "soundsystem" -> Sound System (relay/LED on GPIO)
 - "fan"         -> 28BYJ-48 stepper motor via ULN2003 driver board
@@ -22,7 +22,7 @@ SIMULATE = False  # Set True to test on a laptop without a Pi / GPIO access
 
 # type is used by the frontend to pick icon + animation style
 SWITCH_DEVICES = {
-    "redlight":    {"pin": 17, "name": "Room Light",   "type": "light-red"},
+    "bluelight":   {"pin": 17, "name": "Room Light",   "type": "light-blue"},
     "greenlight":  {"pin": 27, "name": "Hall Light",   "type": "light-green"},
     "soundsystem": {"pin": 22, "name": "Sound System", "type": "sound"},
 }
