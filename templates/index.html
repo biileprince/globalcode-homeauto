@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Automation Panel</title>
+    <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+    <div class="app">
+        <header class="app-header">
+            <h1>🏠 Home Control</h1>
+            <p class="subtitle">Tap a card to switch it on or off</p>
+        </header>
+
+        <div class="grid">
+            {% for key, info in devices.items() %}
+            <div class="card type-{{ info.type }} {{ 'on' if states[key] else 'off' }}"
+                 id="card-{{ key }}"
+                 data-device="{{ key }}"
+                 onclick="toggleDevice('{{ key }}')">
+
+                <div class="icon-wrap" id="icon-{{ key }}">
+                    {% if info.type == 'light-red' or info.type == 'light-green' %}
+                        <svg class="icon bulb" viewBox="0 0 64 64">
+                            <circle class="bulb-glow" cx="32" cy="26" r="20"/>
+                            <path class="bulb-body" d="M32 6a18 18 0 0 0-9 33.6c1.6 1 2 2.4 2 4.4v2h14v-2c0-2 .4-3.4 2-4.4A18 18 0 0 0 32 6z"/>
+                            <rect class="bulb-base" x="26" y="46" width="12" height="10" rx="2"/>
+                        </svg>
+                    {% elif info.type == 'fan' %}
+                        <svg class="icon fan" viewBox="0 0 64 64">
+                            <g class="fan-blades">
+                                <ellipse cx="32" cy="18" rx="7" ry="14"/>
+                                <ellipse cx="32" cy="18" rx="7" ry="14" transform="rotate(120 32 32)"/>
+                                <ellipse cx="32" cy="18" rx="7" ry="14" transform="rotate(240 32 32)"/>
+                            </g>
+                            <circle class="fan-hub" cx="32" cy="32" r="5"/>
+                        </svg>
+                    {% elif info.type == 'sound' %}
+                        <svg class="icon speaker" viewBox="0 0 64 64">
+                            <path class="speaker-body" d="M10 24h10l14-12v40l-14-12H10z"/>
+                            <path class="sound-wave wave1" d="M40 24a10 10 0 0 1 0 16"/>
+                            <path class="sound-wave wave2" d="M46 18a20 20 0 0 1 0 28"/>
+                        </svg>
+                    {% endif %}
+                </div>
+
+                <div class="card-body">
+                    <span class="device-name">{{ info.name }}</span>
+                    <span class="status-pill" id="status-{{ key }}">
+                        {{ "ON" if states[key] else "OFF" }}
+                    </span>
+                </div>
+
+                {% if info.type == 'sound' %}
+                <div class="equalizer" id="eq-{{ key }}">
+                    <span></span><span></span><span></span><span></span><span></span>
+                </div>
+                {% endif %}
+
+                <label class="switch" onclick="event.stopPropagation()">
+                    <input type="checkbox"
+                           id="toggle-{{ key }}"
+                           {% if states[key] %}checked{% endif %}
+                           onchange="toggleDevice('{{ key }}')">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            {% endfor %}
+        </div>
+
+        <footer class="app-footer">
+            <span id="connection-dot" class="dot online"></span>
+            <span id="connection-text">Connected to Raspberry Pi</span>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

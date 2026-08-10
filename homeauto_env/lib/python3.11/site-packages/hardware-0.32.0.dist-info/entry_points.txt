@@ -1,0 +1,2 @@
+[console_scripts]
+hardware-detect = hardware.detect:main

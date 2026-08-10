@@ -1,0 +1,203 @@
+* { box-sizing: border-box; }
+
+:root {
+    --bg: #0b1020;
+    --card-bg: #151b2e;
+    --card-bg-on: #1c2440;
+    --text: #f1f5f9;
+    --text-dim: #8b93a7;
+    --red: #ff4d5e;
+    --green: #35d07f;
+    --blue: #4d9fff;
+    --purple: #b98bff;
+    --amber: #ffb020;
+}
+
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(circle at top, #131a30 0%, var(--bg) 70%);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 32px 16px 60px;
+}
+
+.app { max-width: 620px; margin: 0 auto; }
+
+.app-header { text-align: center; margin-bottom: 28px; }
+.app-header h1 { font-size: 1.8rem; margin: 0 0 6px; letter-spacing: 0.5px; }
+.subtitle { color: var(--text-dim); font-size: 0.9rem; margin: 0; }
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+@media (max-width: 480px) {
+    .grid { grid-template-columns: 1fr; }
+}
+
+.card {
+    position: relative;
+    background: var(--card-bg);
+    border-radius: 20px;
+    padding: 22px 20px;
+    cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: background 0.35s ease, transform 0.15s ease, box-shadow 0.35s ease;
+    overflow: hidden;
+    user-select: none;
+}
+.card:active { transform: scale(0.97); }
+
+.card.on { background: var(--card-bg-on); }
+
+.icon-wrap {
+    width: 56px;
+    height: 56px;
+    margin-bottom: 14px;
+}
+.icon { width: 100%; height: 100%; overflow: visible; }
+
+/* ---- Light bulb icon ---- */
+.bulb-glow {
+    fill: transparent;
+    transition: fill 0.4s ease, filter 0.4s ease;
+}
+.bulb-body {
+    fill: #3a4056;
+    stroke: #565f7d;
+    stroke-width: 1.5;
+    transition: fill 0.4s ease;
+}
+.bulb-base { fill: #565f7d; }
+
+.type-light-red.on .bulb-glow { fill: var(--red); filter: drop-shadow(0 0 12px var(--red)); }
+.type-light-red.on .bulb-body { fill: #ffb3ba; }
+.type-light-red.on { box-shadow: 0 0 30px -4px rgba(255,77,94,0.55); }
+
+.type-light-green.on .bulb-glow { fill: var(--green); filter: drop-shadow(0 0 12px var(--green)); }
+.type-light-green.on .bulb-body { fill: #baffd6; }
+.type-light-green.on { box-shadow: 0 0 30px -4px rgba(53,208,127,0.55); }
+
+/* ---- Fan icon ---- */
+.fan-blades { fill: #566; transition: fill 0.4s ease; transform-origin: 32px 32px; }
+.fan-hub { fill: #8b93a7; }
+.type-fan.on .fan-blades { fill: var(--blue); }
+.type-fan.on { box-shadow: 0 0 30px -4px rgba(77,159,255,0.55); }
+.type-fan.on .fan-blades {
+    animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+/* ---- Speaker icon ---- */
+.speaker-body { fill: #566; transition: fill 0.4s ease; }
+.sound-wave {
+    fill: none;
+    stroke: #566;
+    stroke-width: 3;
+    stroke-linecap: round;
+    opacity: 0;
+    transition: opacity 0.3s ease, stroke 0.3s ease;
+}
+.type-sound.on .speaker-body { fill: var(--purple); }
+.type-sound.on .sound-wave { opacity: 1; stroke: var(--purple); }
+.type-sound.on { box-shadow: 0 0 30px -4px rgba(185,139,255,0.55); }
+
+/* Equalizer bars under sound system name */
+.equalizer {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 22px;
+    margin-top: 10px;
+}
+.equalizer span {
+    display: block;
+    width: 5px;
+    height: 20%;
+    background: #3a4056;
+    border-radius: 3px;
+    transition: background 0.3s ease;
+}
+.type-sound.on .equalizer span {
+    background: var(--purple);
+    animation: eq 0.9s ease-in-out infinite;
+}
+.equalizer span:nth-child(1) { animation-delay: 0s; }
+.equalizer span:nth-child(2) { animation-delay: 0.15s; }
+.equalizer span:nth-child(3) { animation-delay: 0.3s; }
+.equalizer span:nth-child(4) { animation-delay: 0.1s; }
+.equalizer span:nth-child(5) { animation-delay: 0.25s; }
+@keyframes eq {
+    0%, 100% { height: 20%; }
+    50% { height: 100%; }
+}
+
+/* ---- Card body ---- */
+.card-body {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.device-name { font-size: 1rem; font-weight: 600; }
+.status-pill {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+    color: var(--text-dim);
+}
+.card.on .status-pill { background: rgba(255,255,255,0.16); color: var(--text); }
+
+/* ---- Toggle switch (bottom-right corner) ---- */
+.switch {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    width: 44px;
+    height: 26px;
+}
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+    position: absolute;
+    inset: 0;
+    background: #3a4056;
+    border-radius: 34px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.slider::before {
+    content: "";
+    position: absolute;
+    height: 19px; width: 19px;
+    left: 3px; bottom: 3.5px;
+    background: white;
+    border-radius: 50%;
+    transition: 0.3s;
+}
+input:checked + .slider { background: var(--amber); }
+input:checked + .slider::before { transform: translateX(18px); }
+
+/* ---- Footer ---- */
+.app-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 32px;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+}
+.dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+}
+.dot.offline { background: var(--red); box-shadow: 0 0 6px var(--red); }
