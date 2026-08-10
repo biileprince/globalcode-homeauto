@@ -36,26 +36,28 @@ FLAME_SENSOR_PIN = 23
 # HARDWARE SETUP
 # ----------------------------------------------------------------------
 if not SIMULATE:
-    from gpiozero import LED, DigitalInputDevice
+    from gpiozero import LED, InputDevice
 
     # Initialize all switches with their configured active_high state
     _switches = {key: LED(cfg["pin"], active_high=cfg.get("active_high", True)) for key, cfg in SWITCH_DEVICES.items()}
 
     # Initialize the flame sensor
-    # Many LM393-based sensors output LOW when a flame is detected.
-    _flame_sensor = DigitalInputDevice(FLAME_SENSOR_PIN, pull_up=True)
+    # Using InputDevice instead of DigitalInputDevice to avoid the sysfs edge-detection bug (OSError 22)
+    _flame_sensor = InputDevice(FLAME_SENSOR_PIN, pull_up=True)
     _flame_alert = False
 
-    def _flame_detected_handler():
+    def _poll_flame_sensor():
         global _flame_alert
-        # If pull_up=True, is_active is True when the pin is pulled LOW (flame detected)
-        if _flame_sensor.is_active:
-            _flame_alert = True
-            print("\n🚨 [ALARM] Flame detected! Triggering sound system... 🚨\n")
-            _switch_set("soundsystem", True)
+        while True:
+            # If pull_up=True, is_active is True when the pin is pulled LOW (flame detected)
+            if _flame_sensor.is_active and not _flame_alert:
+                _flame_alert = True
+                print("\n🚨 [ALARM] Flame detected! Triggering sound system... 🚨\n")
+                _switch_set("soundsystem", True)
+            time.sleep(0.1)
 
-    _flame_sensor.when_activated = _flame_detected_handler
-    _flame_sensor.when_deactivated = _flame_detected_handler
+    _flame_thread = threading.Thread(target=_poll_flame_sensor, daemon=True)
+    _flame_thread.start()
 
     def _switch_set(key, state):
         global _flame_alert
