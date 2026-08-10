@@ -7,8 +7,8 @@ it only calls the functions below.
 Devices:
 - "bluelight"   -> Room Light   (LED on GPIO, blue)
 - "greenlight"  -> Hall Light   (LED on GPIO, green)
-- "soundsystem" -> Sound System (relay/LED on GPIO)
-- "fan"         -> 28BYJ-48 stepper motor via ULN2003 driver board
+- "soundsystem" -> Sound System (TonalBuzzer on GPIO)
+- "fan"         -> DC Motor
 """
 
 import threading
@@ -27,83 +27,121 @@ SWITCH_DEVICES = {
     "soundsystem": {"pin": 22, "name": "Sound System", "type": "sound"},
 }
 
-# ULN2003 driver board IN1-IN4 pins
-STEPPER_PINS = [5, 6, 13, 19]
-STEPPER_NAME = "Fan"
-STEPPER_TYPE = "fan"
+# DC motor pin (via relay or transistor)
+DC_MOTOR_PIN = 12
+FAN_NAME = "Fan"
+FAN_TYPE = "fan"
 
-# Half-step sequence for 28BYJ-48
-STEP_SEQUENCE = [
-    [1, 0, 0, 0],
-    [1, 1, 0, 0],
-    [0, 1, 0, 0],
-    [0, 1, 1, 0],
-    [0, 0, 1, 0],
-    [0, 0, 1, 1],
-    [0, 0, 0, 1],
-    [1, 0, 0, 1],
+# Mario Theme (Note, Duration in seconds)
+MARIO_THEME = [
+    ("E5", 0.15), ("E5", 0.15), (None, 0.15), ("E5", 0.15), (None, 0.15),
+    ("C5", 0.15), ("E5", 0.15), (None, 0.15), ("G5", 0.3), (None, 0.3),
+    ("G4", 0.3), (None, 0.3)
 ]
-STEP_DELAY = 0.002  # seconds between steps — lower = faster rotation
-
 
 # ----------------------------------------------------------------------
 # HARDWARE SETUP
 # ----------------------------------------------------------------------
 if not SIMULATE:
-    from gpiozero import LED, OutputDevice
+    from gpiozero import LED, OutputDevice, TonalBuzzer
+    from gpiozero.tones import Tone
 
-    _switches = {key: LED(cfg["pin"]) for key, cfg in SWITCH_DEVICES.items()}
-    _stepper_outputs = [OutputDevice(pin) for pin in STEPPER_PINS]
+    _switches = {}
+    for key, cfg in SWITCH_DEVICES.items():
+        if key == "soundsystem":
+            _switches[key] = TonalBuzzer(cfg["pin"])
+        else:
+            _switches[key] = LED(cfg["pin"])
+
+    _fan_output = OutputDevice(DC_MOTOR_PIN)
+
+    _jingle_thread = None
+    _jingle_running = threading.Event()
+    _jingle_state = False
+
+    def _play_jingle():
+        global _jingle_state
+        buzzer = _switches["soundsystem"]
+        for note, duration in MARIO_THEME:
+            if not _jingle_running.is_set():
+                break
+            if note:
+                buzzer.play(Tone(note))
+            else:
+                buzzer.stop()
+            time.sleep(duration)
+        buzzer.stop()
+        _jingle_running.clear()
+        _jingle_state = False
 
     def _switch_set(key, state):
-        _switches[key].on() if state else _switches[key].off()
+        global _jingle_thread, _jingle_state
+        if key == "soundsystem":
+            if state and not _jingle_running.is_set():
+                _jingle_state = True
+                _jingle_running.set()
+                _jingle_thread = threading.Thread(target=_play_jingle, daemon=True)
+                _jingle_thread.start()
+            elif not state and _jingle_running.is_set():
+                _jingle_state = False
+                _jingle_running.clear()
+                if _jingle_thread:
+                    _jingle_thread.join(timeout=1)
+                _switches[key].stop()
+        else:
+            _switches[key].on() if state else _switches[key].off()
 
     def _switch_get(key):
+        if key == "soundsystem":
+            return _jingle_state
         return _switches[key].value == 1
 
-    _stepper_thread = None
-    _stepper_running = threading.Event()
-
-    def _spin_stepper():
-        step_index = 0
-        while _stepper_running.is_set():
-            for pin_out, val in zip(_stepper_outputs, STEP_SEQUENCE[step_index]):
-                pin_out.value = val
-            step_index = (step_index + 1) % len(STEP_SEQUENCE)
-            time.sleep(STEP_DELAY)
-        for pin_out in _stepper_outputs:
-            pin_out.off()
-
     def _fan_set(state):
-        global _stepper_thread
-        if state and not _stepper_running.is_set():
-            _stepper_running.set()
-            _stepper_thread = threading.Thread(target=_spin_stepper, daemon=True)
-            _stepper_thread.start()
-        elif not state and _stepper_running.is_set():
-            _stepper_running.clear()
-            if _stepper_thread:
-                _stepper_thread.join(timeout=1)
+        _fan_output.on() if state else _fan_output.off()
 
     def _fan_get():
-        return _stepper_running.is_set()
+        return _fan_output.value == 1
 
     def _cleanup():
         _fan_set(False)
+        _jingle_running.clear()
+        if _jingle_thread:
+            _jingle_thread.join(timeout=1)
         for sw in _switches.values():
+            if hasattr(sw, 'stop'):
+                sw.stop()
             sw.close()
-        for pin_out in _stepper_outputs:
-            pin_out.close()
+        _fan_output.close()
 
     atexit.register(_cleanup)
 
 else:
     _switch_state = {key: False for key in SWITCH_DEVICES}
     _fan_state = False
+    
+    _jingle_thread = None
+    _jingle_running = threading.Event()
+
+    def _sim_play_jingle():
+        for note, duration in MARIO_THEME:
+            if not _jingle_running.is_set():
+                break
+            time.sleep(duration)
+        _jingle_running.clear()
+        _switch_state["soundsystem"] = False
+        print("[SIMULATE] Sound System -> FINISHED JINGLE")
 
     def _switch_set(key, state):
+        global _jingle_thread
         _switch_state[key] = state
         print(f"[SIMULATE] {SWITCH_DEVICES[key]['name']} -> {'ON' if state else 'OFF'}")
+        if key == "soundsystem":
+            if state:
+                _jingle_running.set()
+                _jingle_thread = threading.Thread(target=_sim_play_jingle, daemon=True)
+                _jingle_thread.start()
+            else:
+                _jingle_running.clear()
 
     def _switch_get(key):
         return _switch_state[key]
@@ -111,7 +149,7 @@ else:
     def _fan_set(state):
         global _fan_state
         _fan_state = state
-        print(f"[SIMULATE] {STEPPER_NAME} -> {'SPINNING' if state else 'STOPPED'}")
+        print(f"[SIMULATE] {FAN_NAME} -> {'ON' if state else 'OFF'}")
 
     def _fan_get():
         return _fan_state
@@ -127,7 +165,7 @@ def list_devices():
         key: {"name": cfg["name"], "type": cfg["type"]}
         for key, cfg in SWITCH_DEVICES.items()
     }
-    devices["fan"] = {"name": STEPPER_NAME, "type": STEPPER_TYPE}
+    devices["fan"] = {"name": FAN_NAME, "type": FAN_TYPE}
     return devices
 
 
