@@ -13,6 +13,7 @@ Devices:
 
 import time
 import atexit
+import threading
 
 # ----------------------------------------------------------------------
 # CONFIG — adjust pin numbers to match your actual wiring
