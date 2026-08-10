@@ -24,7 +24,7 @@ SIMULATE = False  # Set True to test on a laptop without a Pi / GPIO access
 SWITCH_DEVICES = {
     "bluelight":   {"pin": 17, "name": "Room Light",   "type": "light-blue"},
     "greenlight":  {"pin": 27, "name": "Hall Light",   "type": "light-green"},
-    "soundsystem": {"pin": 22, "name": "Sound System", "type": "sound"},
+    "soundsystem": {"pin": 18, "name": "Sound System", "type": "sound"},
 }
 
 # DC motor pin (via relay or transistor)
