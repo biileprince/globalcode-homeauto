@@ -24,7 +24,7 @@ SWITCH_DEVICES = {
     "bluelight":   {"pin": 17, "name": "Room Light",   "type": "light-blue", "active_high": True},
     "greenlight":  {"pin": 27, "name": "Hall Light",   "type": "light-green", "active_high": True},
     "soundsystem": {"pin": 22, "name": "Sound System", "type": "sound", "active_high": True},
-    "fan":         {"pin": 12, "name": "Fan",          "type": "fan", "active_high": False},
+    "fan":         {"pin": 12, "name": "Fan",          "type": "fan", "active_high": True},
 }
 
 # ----------------------------------------------------------------------
@@ -33,7 +33,7 @@ SWITCH_DEVICES = {
 if not SIMULATE:
     from gpiozero import LED
 
-    # The fan uses active_high=False so it works with PNP/active-low transistors
+    # Initialize all switches with their configured active_high state
     _switches = {key: LED(cfg["pin"], active_high=cfg.get("active_high", True)) for key, cfg in SWITCH_DEVICES.items()}
 
     def _switch_set(key, state):
