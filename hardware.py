@@ -11,7 +11,6 @@ Devices:
 - "fan"         -> DC Motor
 """
 
-import threading
 import time
 import atexit
 
@@ -25,22 +24,18 @@ SWITCH_DEVICES = {
     "bluelight":   {"pin": 17, "name": "Room Light",   "type": "light-blue"},
     "greenlight":  {"pin": 27, "name": "Hall Light",   "type": "light-green"},
     "soundsystem": {"pin": 22, "name": "Sound System", "type": "sound"},
+    "fan":         {"pin": 12, "name": "Fan",          "type": "fan"},
 }
-
-# DC motor pin (via relay or transistor)
-DC_MOTOR_PIN = 12
-FAN_NAME = "Fan"
-FAN_TYPE = "fan"
 
 # ----------------------------------------------------------------------
 # HARDWARE SETUP
 # ----------------------------------------------------------------------
 if not SIMULATE:
-    from gpiozero import LED, OutputDevice
+    from gpiozero import LED
 
+    # If your fan is ALWAYS running, your transistor might be active-low (PNP).
+    # You can fix it by changing it to: LED(cfg["pin"], active_high=False)
     _switches = {key: LED(cfg["pin"]) for key, cfg in SWITCH_DEVICES.items()}
-
-    _fan_output = OutputDevice(DC_MOTOR_PIN)
 
     def _switch_set(key, state):
         _switches[key].on() if state else _switches[key].off()
@@ -48,23 +43,14 @@ if not SIMULATE:
     def _switch_get(key):
         return _switches[key].value == 1
 
-    def _fan_set(state):
-        _fan_output.on() if state else _fan_output.off()
-
-    def _fan_get():
-        return _fan_output.value == 1
-
     def _cleanup():
-        _fan_set(False)
         for sw in _switches.values():
             sw.close()
-        _fan_output.close()
 
     atexit.register(_cleanup)
 
 else:
     _switch_state = {key: False for key in SWITCH_DEVICES}
-    _fan_state = False
 
     def _switch_set(key, state):
         _switch_state[key] = state
@@ -72,14 +58,6 @@ else:
 
     def _switch_get(key):
         return _switch_state[key]
-
-    def _fan_set(state):
-        global _fan_state
-        _fan_state = state
-        print(f"[SIMULATE] {FAN_NAME} -> {'ON' if state else 'OFF'}")
-
-    def _fan_get():
-        return _fan_state
 
 
 # ----------------------------------------------------------------------
@@ -92,22 +70,17 @@ def list_devices():
         key: {"name": cfg["name"], "type": cfg["type"]}
         for key, cfg in SWITCH_DEVICES.items()
     }
-    devices["fan"] = {"name": FAN_NAME, "type": FAN_TYPE}
     return devices
 
 
 def _get(key):
-    if key == "fan":
-        return _fan_get()
     if key in SWITCH_DEVICES:
         return _switch_get(key)
     raise KeyError(key)
 
 
 def _set(key, state):
-    if key == "fan":
-        _fan_set(state)
-    elif key in SWITCH_DEVICES:
+    if key in SWITCH_DEVICES:
         _switch_set(key, state)
     else:
         raise KeyError(key)
