@@ -43,10 +43,14 @@ async function refreshStatus() {
         const response = await fetch("/api/status");
         const data = await response.json();
         
+        const alarmBanner = document.getElementById("alarm-banner");
+        
         if (data.flame_alert) {
             document.body.classList.add("alarm-active");
+            if (alarmBanner) alarmBanner.classList.remove("hidden");
         } else {
             document.body.classList.remove("alarm-active");
+            if (alarmBanner) alarmBanner.classList.add("hidden");
         }
 
         for (const [key, isOn] of Object.entries(data)) {
@@ -70,3 +74,21 @@ function setConnection(online) {
 
 // Keep the UI in sync in case a device is toggled from elsewhere
 setInterval(refreshStatus, 5000);
+
+async function dismissAlarm() {
+    try {
+        const response = await fetch("/api/dismiss_alarm", { method: "POST" });
+        const data = await response.json();
+        
+        document.body.classList.remove("alarm-active");
+        const alarmBanner = document.getElementById("alarm-banner");
+        if (alarmBanner) alarmBanner.classList.add("hidden");
+        
+        for (const [key, isOn] of Object.entries(data)) {
+            if (key === "flame_alert") continue;
+            applyState(key, isOn);
+        }
+    } catch (err) {
+        console.error("Failed to dismiss alarm:", err);
+    }
+}

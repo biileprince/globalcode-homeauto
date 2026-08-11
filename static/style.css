@@ -220,3 +220,29 @@ body.alarm-active::before {
     0% { opacity: 0; }
     100% { opacity: 1; }
 }
+
+/* ---- Alarm Banner ---- */
+.alarm-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: var(--red);
+    color: white;
+    font-weight: bold;
+    font-size: 1.2rem;
+    text-align: center;
+    padding: 20px;
+    z-index: 10000;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(255, 77, 94, 0.5);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+.alarm-banner:hover {
+    background: #e63e50;
+}
+.hidden {
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+}

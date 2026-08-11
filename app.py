@@ -44,5 +44,11 @@ def set_device(device_key, state):
     return jsonify({device_key: new_state})
 
 
+@app.route("/api/dismiss_alarm", methods=["POST"])
+def dismiss_alarm():
+    hardware.dismiss_alarm()
+    return jsonify(hardware.get_all_states())
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)

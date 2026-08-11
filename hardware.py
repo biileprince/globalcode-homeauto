@@ -14,6 +14,7 @@ Devices:
 import time
 import atexit
 import threading
+import requests
 
 # ----------------------------------------------------------------------
 # CONFIG — adjust pin numbers to match your actual wiring
@@ -32,6 +33,7 @@ SWITCH_DEVICES = {
 # SENSORS
 # ----------------------------------------------------------------------
 FLAME_SENSOR_PIN = 23
+NTFY_URL = "http://ntfy.sh/on_button_press_prince"
 
 # ----------------------------------------------------------------------
 # HARDWARE SETUP
@@ -55,6 +57,19 @@ if not SIMULATE:
                 _flame_alert = True
                 print("\n🚨 [ALARM] Flame detected! Triggering sound system... 🚨\n")
                 _switch_set("soundsystem", True)
+                
+                # Send IoT Push Notification
+                try:
+                    r = requests.post(
+                        NTFY_URL, 
+                        data="🔥 ALARM: Smoke/Flame detected in the house! 🔥",
+                        headers={"Title": "Home Automation Alert", "Priority": "urgent", "Tags": "fire,warning"},
+                        timeout=5
+                    )
+                    print(f"Sent ntfy push notification: {r.status_code}")
+                except Exception as e:
+                    print(f"Failed to send ntfy notification: {e}")
+
             time.sleep(0.1)
 
     _flame_thread = threading.Thread(target=_poll_flame_sensor, daemon=True)
@@ -87,6 +102,18 @@ else:
         _flame_alert = True
         print("\n🚨 [SIMULATE] Flame detected! Triggering sound system... 🚨\n")
         _switch_set("soundsystem", True)
+        
+        # Send IoT Push Notification
+        try:
+            r = requests.post(
+                NTFY_URL, 
+                data="🔥 ALARM (SIMULATED): Smoke/Flame detected in the house! 🔥",
+                headers={"Title": "Home Automation Alert", "Priority": "urgent", "Tags": "fire,warning"},
+                timeout=5
+            )
+            print(f"Sent ntfy push notification: {r.status_code}")
+        except Exception as e:
+            print(f"Failed to send ntfy notification: {e}")
         
     _sim_thread = threading.Thread(target=_sim_flame, daemon=True)
     _sim_thread.start()
@@ -144,3 +171,12 @@ def toggle(key):
 def set_state(key, state: bool):
     """Explicitly set a device on/off. Raises KeyError if key is unknown."""
     return _set(key, state)
+
+
+def dismiss_alarm():
+    """Clear the global flame alert and turn off the sound system."""
+    global _flame_alert
+    _flame_alert = False
+    if "soundsystem" in SWITCH_DEVICES:
+        _switch_set("soundsystem", False)
+    return {"status": "dismissed"}
