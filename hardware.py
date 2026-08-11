@@ -60,24 +60,21 @@ if not SIMULATE:
         last_flame = None
         last_gas = None
         while True:
-            flame_val = _flame_sensor.value
-            gas_val = _gas_sensor.value
+            # .is_active correctly accounts for pull_up inversion:
+            #   idle (physical HIGH) -> is_active = False
+            #   triggered (physical LOW) -> is_active = True
+            flame_active = _flame_sensor.is_active
+            gas_active = _gas_sensor.is_active
 
-            # Debug print if the sensor pin state changes
-            if flame_val != last_flame or gas_val != last_gas:
-                print(f"[DEBUG SENSORS] Flame DO = {flame_val} | Gas DO = {gas_val}")
-                last_flame = flame_val
-                last_gas = gas_val
+            # Debug print if the sensor state changes
+            if flame_active != last_flame or gas_active != last_gas:
+                print(f"[DEBUG SENSORS] Flame is_active = {flame_active} | Gas is_active = {gas_active}")
+                last_flame = flame_active
+                last_gas = gas_active
 
-            # gpiozero with pull_up=True inverts .value vs raw pin voltage.
-            # Both sensors output HIGH when idle, LOW when triggered.
-            # So gpiozero reports 0 at idle and 1 when triggered.
-            flame_detected = (flame_val == 1)
-            gas_detected = (gas_val == 1)
-
-            if (flame_detected or gas_detected) and not _alarm_active:
+            if (flame_active or gas_active) and not _alarm_active:
                 _alarm_active = True
-                _alarm_reason = "🔥 FLAME DETECTED" if flame_detected else "☁️ GAS DETECTED"
+                _alarm_reason = "🔥 FLAME DETECTED" if flame_active else "☁️ GAS DETECTED"
                 
                 print(f"\n🚨 [ALARM] {_alarm_reason}! Triggering sound system... 🚨\n")
                 _switch_set("soundsystem", True)
