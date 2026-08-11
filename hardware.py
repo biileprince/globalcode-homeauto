@@ -66,8 +66,8 @@ if not SIMULATE:
                 last_flame = flame_val
                 last_gas = gas_val
 
-            # Most LM393 sensors pull the D0 pin LOW (0) when triggered
-            flame_detected = (flame_val == 0)
+            # The Flame sensor is 0 when idle, so triggers on 1. Gas is 1 when idle, so triggers on 0.
+            flame_detected = (flame_val == 1)
             gas_detected = (gas_val == 0)
 
             if (flame_detected or gas_detected) and not _alarm_active:
