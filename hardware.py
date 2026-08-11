@@ -46,11 +46,9 @@ if not SIMULATE:
     _switches = {key: LED(cfg["pin"], active_high=cfg.get("active_high", True)) for key, cfg in SWITCH_DEVICES.items()}
 
     # Initialize the flame and gas sensors
-    # pull_up=True enables Pi's internal pull-up resistor.
-    # gpiozero INVERTS the value when pull_up=True:
-    #   Idle (physical HIGH)   → .value = 0
-    #   Triggered (physical LOW) → .value = 1
-    _flame_sensor = InputDevice(FLAME_SENSOR_PIN, pull_up=True)
+    # Flame sensor: per SunFounder docs, NO pull_up. is_active=True means NO flame, is_active=False means FLAME.
+    # Gas sensor: pull_up=True. is_active=True means GAS DETECTED.
+    _flame_sensor = InputDevice(FLAME_SENSOR_PIN)
     _gas_sensor = InputDevice(GAS_SENSOR_PIN, pull_up=True)
     _alarm_active = False
     _alarm_reason = ""
@@ -72,9 +70,14 @@ if not SIMULATE:
                 last_flame = flame_active
                 last_gas = gas_active
 
-            if (flame_active or gas_active) and not _alarm_active:
+            # Flame sensor (per SunFounder docs): is_active=True -> NO flame, is_active=False -> FLAME!
+            # Gas sensor: is_active=True -> GAS DETECTED
+            flame_detected = not flame_active
+            gas_detected = gas_active
+
+            if (flame_detected or gas_detected) and not _alarm_active:
                 _alarm_active = True
-                _alarm_reason = "🔥 FLAME DETECTED" if flame_active else "☁️ GAS DETECTED"
+                _alarm_reason = "🔥 FLAME DETECTED" if flame_detected else "☁️ GAS DETECTED"
                 
                 print(f"\n🚨 [ALARM] {_alarm_reason}! Triggering sound system... 🚨\n")
                 _switch_set("soundsystem", True)
