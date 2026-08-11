@@ -33,6 +33,7 @@ SWITCH_DEVICES = {
 # SENSORS
 # ----------------------------------------------------------------------
 FLAME_SENSOR_PIN = 23
+GAS_SENSOR_PIN = 24
 NTFY_URL = "http://ntfy.sh/on_button_press_prince"
 
 # ----------------------------------------------------------------------
@@ -44,25 +45,31 @@ if not SIMULATE:
     # Initialize all switches with their configured active_high state
     _switches = {key: LED(cfg["pin"], active_high=cfg.get("active_high", True)) for key, cfg in SWITCH_DEVICES.items()}
 
-    # Initialize the flame sensor
-    # Using InputDevice instead of DigitalInputDevice to avoid the sysfs edge-detection bug (OSError 22)
+    # Initialize the flame and gas sensors
     _flame_sensor = InputDevice(FLAME_SENSOR_PIN, pull_up=True)
-    _flame_alert = False
+    _gas_sensor = InputDevice(GAS_SENSOR_PIN, pull_up=True)
+    _alarm_active = False
+    _alarm_reason = ""
 
-    def _poll_flame_sensor():
-        global _flame_alert
+    def _poll_sensors():
+        global _alarm_active, _alarm_reason
         while True:
-            # If pull_up=True, is_active is True when the pin is pulled LOW (flame detected)
-            if _flame_sensor.is_active and not _flame_alert:
-                _flame_alert = True
-                print("\n🚨 [ALARM] Flame detected! Triggering sound system... 🚨\n")
+            # Check sensors
+            flame_detected = _flame_sensor.is_active
+            gas_detected = _gas_sensor.is_active
+
+            if (flame_detected or gas_detected) and not _alarm_active:
+                _alarm_active = True
+                _alarm_reason = "🔥 FLAME DETECTED" if flame_detected else "☁️ GAS DETECTED"
+                
+                print(f"\n🚨 [ALARM] {_alarm_reason}! Triggering sound system... 🚨\n")
                 _switch_set("soundsystem", True)
                 
                 # Send IoT Push Notification
                 try:
                     r = requests.post(
                         NTFY_URL, 
-                        data="🔥 ALARM: Smoke/Flame detected in the house! 🔥",
+                        data=f"🚨 ALARM: {_alarm_reason} in the house! 🚨",
                         headers={"Title": "Home Automation Alert", "Priority": "urgent", "Tags": "fire,warning"},
                         timeout=5
                     )
@@ -72,13 +79,14 @@ if not SIMULATE:
 
             time.sleep(0.1)
 
-    _flame_thread = threading.Thread(target=_poll_flame_sensor, daemon=True)
-    _flame_thread.start()
+    _sensor_thread = threading.Thread(target=_poll_sensors, daemon=True)
+    _sensor_thread.start()
 
     def _switch_set(key, state):
-        global _flame_alert
+        global _alarm_active, _alarm_reason
         if key == "soundsystem" and not state:
-            _flame_alert = False
+            _alarm_active = False
+            _alarm_reason = ""
         _switches[key].on() if state else _switches[key].off()
 
     def _switch_get(key):
@@ -88,26 +96,29 @@ if not SIMULATE:
         for sw in _switches.values():
             sw.close()
         _flame_sensor.close()
+        _gas_sensor.close()
 
     atexit.register(_cleanup)
 
 else:
     _switch_state = {key: False for key in SWITCH_DEVICES}
-    _flame_alert = False
+    _alarm_active = False
+    _alarm_reason = ""
     
-    # Simulate a fake background thread to occasionally "detect" a flame for testing
-    def _sim_flame():
-        global _flame_alert
-        time.sleep(20)  # Wait 20 seconds, then simulate a flame
-        _flame_alert = True
-        print("\n🚨 [SIMULATE] Flame detected! Triggering sound system... 🚨\n")
+    # Simulate a fake background thread to occasionally "detect" a gas leak for testing
+    def _sim_sensors():
+        global _alarm_active, _alarm_reason
+        time.sleep(20)  # Wait 20 seconds, then simulate gas
+        _alarm_active = True
+        _alarm_reason = "☁️ GAS DETECTED"
+        print(f"\n🚨 [SIMULATE] {_alarm_reason}! Triggering sound system... 🚨\n")
         _switch_set("soundsystem", True)
         
         # Send IoT Push Notification
         try:
             r = requests.post(
                 NTFY_URL, 
-                data="🔥 ALARM (SIMULATED): Smoke/Flame detected in the house! 🔥",
+                data=f"🚨 ALARM (SIMULATED): {_alarm_reason} in the house! 🚨",
                 headers={"Title": "Home Automation Alert", "Priority": "urgent", "Tags": "fire,warning"},
                 timeout=5
             )
@@ -115,13 +126,14 @@ else:
         except Exception as e:
             print(f"Failed to send ntfy notification: {e}")
         
-    _sim_thread = threading.Thread(target=_sim_flame, daemon=True)
+    _sim_thread = threading.Thread(target=_sim_sensors, daemon=True)
     _sim_thread.start()
 
     def _switch_set(key, state):
-        global _flame_alert
+        global _alarm_active, _alarm_reason
         if key == "soundsystem" and not state:
-            _flame_alert = False
+            _alarm_active = False
+            _alarm_reason = ""
         _switch_state[key] = state
         print(f"[SIMULATE] {SWITCH_DEVICES[key]['name']} -> {'ON' if state else 'OFF'}")
 
@@ -159,7 +171,8 @@ def _set(key, state):
 def get_all_states():
     """Return {device_key: bool} for every device."""
     states = {key: _get(key) for key in list_devices()}
-    states["flame_alert"] = _flame_alert
+    states["alarm_active"] = _alarm_active
+    states["alarm_reason"] = _alarm_reason
     return states
 
 
@@ -174,9 +187,10 @@ def set_state(key, state: bool):
 
 
 def dismiss_alarm():
-    """Clear the global flame alert and turn off the sound system."""
-    global _flame_alert
-    _flame_alert = False
+    """Clear the global alarm state and turn off the sound system."""
+    global _alarm_active, _alarm_reason
+    _alarm_active = False
+    _alarm_reason = ""
     if "soundsystem" in SWITCH_DEVICES:
         _switch_set("soundsystem", False)
     return {"status": "dismissed"}

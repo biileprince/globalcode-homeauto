@@ -45,16 +45,19 @@ async function refreshStatus() {
         
         const alarmBanner = document.getElementById("alarm-banner");
         
-        if (data.flame_alert) {
+        if (data.alarm_active) {
             document.body.classList.add("alarm-active");
-            if (alarmBanner) alarmBanner.classList.remove("hidden");
+            if (alarmBanner) {
+                alarmBanner.classList.remove("hidden");
+                alarmBanner.innerText = `🚨 ${data.alarm_reason}! CLICK TO DISMISS 🚨`;
+            }
         } else {
             document.body.classList.remove("alarm-active");
             if (alarmBanner) alarmBanner.classList.add("hidden");
         }
 
         for (const [key, isOn] of Object.entries(data)) {
-            if (key === "flame_alert") continue;
+            if (key === "alarm_active" || key === "alarm_reason") continue;
             applyState(key, isOn);
         }
         setConnection(true);
@@ -85,7 +88,7 @@ async function dismissAlarm() {
         if (alarmBanner) alarmBanner.classList.add("hidden");
         
         for (const [key, isOn] of Object.entries(data)) {
-            if (key === "flame_alert") continue;
+            if (key === "alarm_active" || key === "alarm_reason") continue;
             applyState(key, isOn);
         }
     } catch (err) {
