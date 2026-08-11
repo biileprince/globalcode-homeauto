@@ -41,14 +41,18 @@ NTFY_URL = "http://ntfy.sh/on_button_press_prince"
 # ----------------------------------------------------------------------
 if not SIMULATE:
     from gpiozero import LED, InputDevice
+    import RPi.GPIO as GPIO
+
+    # Set up RPi.GPIO mode
+    GPIO.setmode(GPIO.BCM)
 
     # Initialize all switches with their configured active_high state
     _switches = {key: LED(cfg["pin"], active_high=cfg.get("active_high", True)) for key, cfg in SWITCH_DEVICES.items()}
 
-    # Initialize the flame and gas sensors
-    # Flame sensor: per SunFounder docs, NO pull_up. is_active=True means NO flame, is_active=False means FLAME.
-    # Gas sensor: pull_up=True. is_active=True means GAS DETECTED.
-    _flame_sensor = InputDevice(FLAME_SENSOR_PIN)
+    # Initialize the flame sensor using RPi.GPIO
+    GPIO.setup(FLAME_SENSOR_PIN, GPIO.IN)
+
+    # Initialize the gas sensor using gpiozero
     _gas_sensor = InputDevice(GAS_SENSOR_PIN, pull_up=True)
     _alarm_active = False
     _alarm_reason = ""
@@ -61,18 +65,16 @@ if not SIMULATE:
             # .is_active correctly accounts for pull_up inversion:
             #   idle (physical HIGH) -> is_active = False
             #   triggered (physical LOW) -> is_active = True
-            flame_active = _flame_sensor.is_active
+            flame_state = GPIO.input(FLAME_SENSOR_PIN)
             gas_active = _gas_sensor.is_active
 
             # Debug print if the sensor state changes
-            if flame_active != last_flame or gas_active != last_gas:
-                print(f"[DEBUG SENSORS] Flame is_active = {flame_active} | Gas is_active = {gas_active}")
-                last_flame = flame_active
+            if flame_state != last_flame or gas_active != last_gas:
+                print(f"[DEBUG SENSORS] Flame state = {'HIGH (No flame)' if flame_state == GPIO.HIGH else 'LOW (Flame)'} | Gas is_active = {gas_active}")
+                last_flame = flame_state
                 last_gas = gas_active
 
-            # Flame sensor (per SunFounder docs): is_active=True -> NO flame, is_active=False -> FLAME!
-            # Gas sensor: is_active=True -> GAS DETECTED
-            flame_detected = not flame_active
+            flame_detected = (flame_state == GPIO.LOW)
             gas_detected = gas_active
 
             if (flame_detected or gas_detected) and not _alarm_active:
@@ -112,8 +114,9 @@ if not SIMULATE:
     def _cleanup():
         for sw in _switches.values():
             sw.close()
-        _flame_sensor.close()
         _gas_sensor.close()
+        # No need to explicitly close flame since RPi.GPIO cleanup is usually handled by atexit on the script level,
+        # but we can optionally reset it.
 
     atexit.register(_cleanup)
 
