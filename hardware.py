@@ -46,17 +46,28 @@ if not SIMULATE:
     _switches = {key: LED(cfg["pin"], active_high=cfg.get("active_high", True)) for key, cfg in SWITCH_DEVICES.items()}
 
     # Initialize the flame and gas sensors
-    _flame_sensor = InputDevice(FLAME_SENSOR_PIN, pull_up=True)
-    _gas_sensor = InputDevice(GAS_SENSOR_PIN, pull_up=True)
+    _flame_sensor = InputDevice(FLAME_SENSOR_PIN)
+    _gas_sensor = InputDevice(GAS_SENSOR_PIN)
     _alarm_active = False
     _alarm_reason = ""
 
     def _poll_sensors():
         global _alarm_active, _alarm_reason
+        last_flame = None
+        last_gas = None
         while True:
-            # Check sensors
-            flame_detected = _flame_sensor.is_active
-            gas_detected = _gas_sensor.is_active
+            flame_val = _flame_sensor.value
+            gas_val = _gas_sensor.value
+
+            # Debug print if the sensor pin state changes
+            if flame_val != last_flame or gas_val != last_gas:
+                print(f"[DEBUG SENSORS] Flame DO = {flame_val} | Gas DO = {gas_val}")
+                last_flame = flame_val
+                last_gas = gas_val
+
+            # Most LM393 sensors pull the D0 pin LOW (0) when triggered
+            flame_detected = (flame_val == 0)
+            gas_detected = (gas_val == 0)
 
             if (flame_detected or gas_detected) and not _alarm_active:
                 _alarm_active = True
