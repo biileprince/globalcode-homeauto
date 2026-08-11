@@ -46,10 +46,12 @@ if not SIMULATE:
     _switches = {key: LED(cfg["pin"], active_high=cfg.get("active_high", True)) for key, cfg in SWITCH_DEVICES.items()}
 
     # Initialize the flame and gas sensors
-    # We explicitly remove pull_up=True to read the raw voltage from the sensor modules,
-    # as gpiozero magically inverts .value when pull_up is set!
-    _flame_sensor = InputDevice(FLAME_SENSOR_PIN)
-    _gas_sensor = InputDevice(GAS_SENSOR_PIN)
+    # pull_up=True enables Pi's internal pull-up resistor.
+    # gpiozero INVERTS the value when pull_up=True:
+    #   Idle (physical HIGH)   → .value = 0
+    #   Triggered (physical LOW) → .value = 1
+    _flame_sensor = InputDevice(FLAME_SENSOR_PIN, pull_up=True)
+    _gas_sensor = InputDevice(GAS_SENSOR_PIN, pull_up=True)
     _alarm_active = False
     _alarm_reason = ""
 
@@ -67,11 +69,11 @@ if not SIMULATE:
                 last_flame = flame_val
                 last_gas = gas_val
 
-            # Since we removed pull_up=True, we get raw values:
-            # Gas DO is 1 when idle (so gas_val == 0 means TRIGGERED)
-            # Flame DO is 0 when idle (so flame_val == 1 means TRIGGERED)
+            # gpiozero with pull_up=True inverts .value vs raw pin voltage.
+            # Both sensors output HIGH when idle, LOW when triggered.
+            # So gpiozero reports 0 at idle and 1 when triggered.
             flame_detected = (flame_val == 1)
-            gas_detected = (gas_val == 0)
+            gas_detected = (gas_val == 1)
 
             if (flame_detected or gas_detected) and not _alarm_active:
                 _alarm_active = True
