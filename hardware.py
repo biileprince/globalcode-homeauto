@@ -64,20 +64,9 @@ if not SIMULATE:
 
     def _poll_sensors():
         global _alarm_active, _alarm_reason
-        last_flame = None
-        last_gas = None
         while True:
-            # .is_active correctly accounts for pull_up inversion:
-            #   idle (physical HIGH) -> is_active = False
-            #   triggered (physical LOW) -> is_active = True
             flame_state = GPIO.input(FLAME_SENSOR_PIN)
             gas_active = _gas_sensor.is_active
-
-            # Debug print if the sensor state changes
-            if flame_state != last_flame or gas_active != last_gas:
-                print(f"[DEBUG SENSORS] Flame state = {'HIGH (No flame)' if flame_state == GPIO.HIGH else 'LOW (Flame)'} | Gas is_active = {gas_active}")
-                last_flame = flame_state
-                last_gas = gas_active
 
             flame_detected = (flame_state == GPIO.LOW)
             gas_detected = gas_active
@@ -123,8 +112,6 @@ if not SIMULATE:
             sw.close()
         _gas_sensor.close()
         _alarm_led.close()
-        # No need to explicitly close flame since RPi.GPIO cleanup is usually handled by atexit on the script level,
-        # but we can optionally reset it.
 
     atexit.register(_cleanup)
 
