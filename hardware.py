@@ -34,6 +34,7 @@ SWITCH_DEVICES = {
 # ----------------------------------------------------------------------
 FLAME_SENSOR_PIN = 23
 GAS_SENSOR_PIN = 24
+ALARM_LED_PIN = 18
 NTFY_URL = "http://ntfy.sh/on_button_press_prince"
 
 # ----------------------------------------------------------------------
@@ -54,6 +55,10 @@ if not SIMULATE:
 
     # Initialize the gas sensor using gpiozero
     _gas_sensor = InputDevice(GAS_SENSOR_PIN, pull_up=True)
+    
+    # Initialize the alarm LED
+    _alarm_led = LED(ALARM_LED_PIN)
+    
     _alarm_active = False
     _alarm_reason = ""
 
@@ -83,6 +88,7 @@ if not SIMULATE:
                 
                 print(f"\n🚨 [ALARM] {_alarm_reason}! Triggering sound system... 🚨\n")
                 _switch_set("soundsystem", True)
+                _alarm_led.blink(on_time=0.5, off_time=0.5)
                 
                 # Send IoT Push Notification
                 try:
@@ -106,6 +112,7 @@ if not SIMULATE:
         if key == "soundsystem" and not state:
             _alarm_active = False
             _alarm_reason = ""
+            _alarm_led.off()
         _switches[key].on() if state else _switches[key].off()
 
     def _switch_get(key):
@@ -115,6 +122,7 @@ if not SIMULATE:
         for sw in _switches.values():
             sw.close()
         _gas_sensor.close()
+        _alarm_led.close()
         # No need to explicitly close flame since RPi.GPIO cleanup is usually handled by atexit on the script level,
         # but we can optionally reset it.
 
